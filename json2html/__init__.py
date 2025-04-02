@@ -17,16 +17,9 @@ def json2html(req: func.HttpRequest) -> func.HttpResponse:
 
     blocks = data.get("from", [])
 
-    # Вычисление максимальных координат
-    max_x = max((b.get("boundingBox", [0])[0] for b in blocks), default=1)
-    max_y = max((b.get("boundingBox", [0, 0])[1] for b in blocks), default=1)
+scale_x = 10
+scale_y = 10
 
-    # Целевой размер
-    target_width_em = 100
-    target_height_em = 100
-
-    scale_x = target_width_em / max_x if max_x else 1
-    scale_y = target_height_em / max_y if max_y else 1
 
     html_lines = [
         "<html><head><meta charset='utf-8'>",
