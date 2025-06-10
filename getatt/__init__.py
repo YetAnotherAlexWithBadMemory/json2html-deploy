@@ -49,6 +49,9 @@ def extract_attachment_name(part: Message) -> str:
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.warning("=== Функция запущена ===")
+    # Это должно сработать — даже если json плохой
+    raw_body = req.get_body().decode(errors="replace")
+    logging.warning(f"=== Сырой запрос ===\\n{raw_body[:300]}...")
     try:
         data = req.get_json()
         eml_content = data.get("eml_content", "")
