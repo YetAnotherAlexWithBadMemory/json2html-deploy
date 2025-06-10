@@ -8,6 +8,8 @@ from email.header import decode_header
 from email.message import Message
 import azure.functions as func
 
+logging.getLogger().setLevel(logging.INFO)
+
 def extract_attachment_name(part: Message) -> str:
     content_type = part.get("Content-Type", "")
     matches = re.findall(r'(?i)\bname\*\s*=\s*([^;\n]+)', content_type)
@@ -46,6 +48,7 @@ def extract_attachment_name(part: Message) -> str:
     return None
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
+    logging.warning("=== Функция запущена ===")
     try:
         data = req.get_json()
         eml_content = data.get("eml_content", "")
