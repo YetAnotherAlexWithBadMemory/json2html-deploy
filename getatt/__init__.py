@@ -48,12 +48,10 @@ def extract_attachment_name(part: Message) -> str:
     return None
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    logging.warning("=== DIAG: Функция запущена ===")
+    logging.info("== START getatt ==")
 
     try:
-        raw_body = req.get_body().decode(errors="replace")
-        logging.info(f"=== RAW BODY START ===\n{raw_body[:500]}\n=== RAW BODY END ===")
-        data = json.loads(raw_body)
+        data = req.get_json()
         eml_content = data.get("eml_content", "")
         expected_filenames = data.get("filenames", [])
 
@@ -62,24 +60,24 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         for part in msg.walk():
             filename = extract_attachment_name(part)
-            logging.info(f"[PART] Извлечено имя: {repr(filename)}")
+            if not filename:
+                continue
             for target in expected_filenames:
-                logging.info(f"→ Сравнение с: {repr(target)}")
                 if filename == target:
                     payload = part.get_payload(decode=True)
                     if payload:
                         found[target] = base64.b64encode(payload).decode("utf-8")
-                        logging.info(f"[OK] Найдено: {target}, байт: {len(payload)}")
                     else:
-                        logging.warning(f"[EMPTY] {target} найдено, но пустое")
+                        found[target] = ""
                     break
 
         result = []
         for name in expected_filenames:
             result.append(found.get(name, ""))
 
+        logging.info("== DONE getatt ==")
         return func.HttpResponse(json.dumps(result, indent=2, ensure_ascii=False), mimetype="application/json")
 
     except Exception as e:
-        logging.exception("Ошибка при обработке запроса")
+        logging.exception("Ошибка в getatt")
         return func.HttpResponse(f"Unexpected error: {e}", status_code=500)
