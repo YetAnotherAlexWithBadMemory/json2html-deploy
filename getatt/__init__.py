@@ -49,3 +49,50 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         logging.exception("Unexpected error")
         return func.HttpResponse(f"Unexpected error: {str(e)}", status_code=500)
+
+from email.header import decode_header
+from email.message import Message
+from urllib.parse import unquote
+import re
+
+def extract_attachment_name(part: Message) -> str:
+    # 1. Попробовать Name*= (RFC 5987)
+    content_type = part.get("Content-Type", "")
+    matches = re.findall(r'(?i)\\bname\\*\\s*=\\s*([^;\\n]+)', content_type)
+    if matches:
+        value = matches[0].strip()
+        if value.lower().startswith("utf-8''"):
+            return unquote(value[7:])
+        else:
+            return unquote(value)
+
+    # 2. Попробовать обычное Name=
+    matches = re.findall(r'(?i)\\bname\\s*=\\s*"?([^";\\n]+)"?', content_type)
+    if matches:
+        return matches[0].strip()
+
+    # 3. Попробовать filename*= (RFC 5987)
+    content_disposition = part.get("Content-Disposition", "")
+    matches = re.findall(r'(?i)\\bfilename\\*\\s*=\\s*([^;\\n]+)', content_disposition)
+    if matches:
+        value = matches[0].strip()
+        if value.lower().startswith("utf-8''"):
+            return unquote(value[7:])
+        else:
+            return unquote(value)
+
+    # 4. Попробовать обычное filename=
+    matches = re.findall(r'(?i)\\bfilename\\s*=\\s*"?([^";\\n]+)"?', content_disposition)
+    if matches:
+        return matches[0].strip()
+
+    # 5. Попробовать MIME-закодированные заголовки
+    raw_filename = part.get_filename()
+    if raw_filename:
+        decoded = decode_header(raw_filename)
+        return ''.join([
+            frag.decode(enc or 'utf-8') if isinstance(frag, bytes) else frag
+            for frag, enc in decoded
+        ])
+
+    return None
